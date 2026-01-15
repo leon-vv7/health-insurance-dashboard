@@ -1,0 +1,26 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: ['main']    # Auto-deploy on push to main
+  workflow_dispatch:       # Manual trigger option
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - Checkout code
+      - Install uv package manager
+      - Export notebooks using build.py
+      - Upload artifact to GitHub Pages
+
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - Deploy to GitHub Pages
