@@ -37,13 +37,13 @@ jobs:
       - name: 🛠️ Export dashboard
         run: |
           mkdir -p _site/apps/public
-          mkdir -p _site/layouts
+          mkdir -p _site/apps/layouts
 
           # Copy data files to the output directory
           cp -r apps/public/* _site/apps/public/
 
           # Copy layouts directory
-          cp -r layouts/* _site/layouts/
+          cp -r apps/layouts/* _site/apps/layouts/
 
           # Export the marimo app to HTML/WebAssembly in run mode
           marimo export html-wasm apps/data_marts_dashboard.py \
@@ -54,6 +54,7 @@ jobs:
           # Show what was generated
           ls -la _site/
           ls -la _site/apps/public/
+          ls -la _site/apps/layouts/
 
       # Upload the generated site as an artifact for the deploy job
       - name: 📤 Upload artifact
