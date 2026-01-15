@@ -78,18 +78,9 @@
         "position": null
       },
       {
-        "position": null
-      },
-      {
-        "position": null
-      },
-      {
-        "position": null
-      },
-      {
         "position": [
           0,
-          71,
+          13,
           24,
           24
         ]
@@ -97,25 +88,25 @@
       {
         "position": [
           0,
-          42,
-          24,
-          29
+          37,
+          12,
+          28
         ]
       },
       {
         "position": [
           12,
-          13,
+          37,
           12,
-          29
+          28
         ]
       },
       {
         "position": [
           0,
-          13,
-          12,
-          29
+          65,
+          24,
+          24
         ]
       }
     ]

@@ -6,9 +6,10 @@
 #     "plotly>=5.0.0",
 # ]
 # ///
+
 import marimo
 
-__generated_with = "0.19.2"
+__generated_with = "0.19.4"
 app = marimo.App(
     width="medium",
     layout_file="layouts/data_marts_dashboard.grid.json",
@@ -22,7 +23,7 @@ def _():
     import plotly.express as px
     import plotly.graph_objects as go
     from pathlib import Path
-    return Path, mo, pd, px
+    return mo, pd, px
 
 
 @app.cell
@@ -87,7 +88,7 @@ def _(data_dir, data_mart_selector, pd):
     # Read CSV file
     csv_path = data_dir / f"{selected_table}.csv"
     df = pd.read_csv(str(csv_path))
-    return csv_path, df, display_name, selected_table
+    return df, display_name, selected_table
 
 
 @app.cell
@@ -475,6 +476,7 @@ def _(fig1):
 def _(fig2):
     fig2
     return
+
 
 @app.cell
 def _(fig3):
