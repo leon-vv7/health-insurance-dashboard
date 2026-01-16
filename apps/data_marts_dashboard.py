@@ -12,7 +12,7 @@ import marimo
 __generated_with = "0.19.4"
 app = marimo.App(
     width="medium",
-    layout_file="layouts/data_marts_dashboard.grid.json",
+    layout_file="apps/layouts/data_marts_dashboard.grid.json",
 )
 
 
@@ -41,7 +41,8 @@ def _(mo):
 @app.cell
 def _(mo):
     # Define data directory using marimo's notebook location
-    data_dir = mo.notebook_location() / "public"
+    # When deployed, the notebook is at root as index.html, data is in apps/public/
+    data_dir = mo.notebook_location() / "apps" / "public"
     return (data_dir,)
 
 
