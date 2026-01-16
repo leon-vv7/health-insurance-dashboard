@@ -12,7 +12,7 @@ import marimo
 __generated_with = "0.19.4"
 app = marimo.App(
     width="medium",
-    layout_file="apps/layouts/data_marts_dashboard.grid.json",
+    layout_file="layouts/data_marts_dashboard.grid.json",
 )
 
 
