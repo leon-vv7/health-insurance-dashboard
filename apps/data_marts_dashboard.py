@@ -39,11 +39,10 @@ def _(mo):
 
 
 @app.cell
-def _(mo):
-    # Define data directory using marimo's notebook location
-    # When deployed, the notebook is at root as index.html, data is in apps/public/
-    data_dir = mo.notebook_location() / "apps" / "public"
-    return (data_dir,)
+def _():
+    # Base URL for CSV files from GitHub raw content
+    base_url = "https://raw.githubusercontent.com/njaltran/health-insurance-dashboard/main/apps/public"
+    return (base_url,)
 
 
 @app.cell
@@ -72,7 +71,7 @@ def _(mo):
 
 
 @app.cell
-def _(data_dir, data_mart_selector, pd):
+def _(base_url, data_mart_selector, pd):
     # Load selected data mart from CSV
     selected_table = data_mart_selector.value
 
@@ -86,10 +85,10 @@ def _(data_dir, data_mart_selector, pd):
     }
     display_name = display_names.get(selected_table, selected_table)
 
-    # Read CSV file
-    csv_path = data_dir / f"{selected_table}.csv"
-    df = pd.read_csv(str(csv_path))
-    return df, display_name, selected_table
+    # Read CSV file from GitHub raw URL
+    csv_url = f"{base_url}/{selected_table}.csv"
+    df = pd.read_csv(csv_url)
+    return csv_url, df, display_name, selected_table
 
 
 @app.cell
