@@ -2,25 +2,47 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ['main']    # Auto-deploy on push to main
-  workflow_dispatch:       # Manual trigger option
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - Checkout code
-      - Install uv package manager
-      - Export notebooks using build.py
-      - Upload artifact to GitHub Pages
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv package manager
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv pip install --system marimo pandas plotly
+
+      # This creates the public/ directory and converts your apps
+      - name: Build WASM site
+        run: |
+          mkdir -p public
+          marimo export html-wasm apps/data_marts_dashboard.py -o public/apps/data_marts_dashboard.html --mode edit
+          marimo export html-wasm apps/tableau_embed.py -o public/apps/tableau_embed.html --mode edit
+          cp index.html public/index.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public/
 
   deploy:
-    needs: build
-    permissions:
-      pages: write
-      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
     steps:
-      - Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
