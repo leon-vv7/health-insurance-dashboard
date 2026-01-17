@@ -127,31 +127,35 @@
 <body>
     <div class="container">
         <header>
-            <h1>📊 Health Insurance Dashboard</h1>
-            <p class="subtitle">Interactive visualization of your complete 5-layer data warehouse</p>
+            <h1>📊 Health Insurance Dashboard Selection</h1>
+            <p class="subtitle">Interactive visualizations of our complete 5-layer data warehouse</p>
         </header>
 
         <div class="dashboard-links">
             <a href="apps/data_marts_dashboard.html" class="dashboard-card" target="_blank">
                 <div class="card-icon">📊</div>
-                <div class="card-title">Data Marts</div>
+                <div class="card-title">Data Marts Dashboards</div>
                 <div class="card-description">Explore customer 360, health demographics, profitability, and data quality insights</div>
             </a>
 
             <a href="apps/tableau_embed.html" class="dashboard-card" target="_blank">
                 <div class="card-icon">📈</div>
-                <div class="card-title">Tableau Dashboard</div>
-                <div class="card-description">Interactive Tableau visualizations for health analysis and business intelligence</div>
+                <div class="card-title">Tableau Dashboards</div>
+                <div class="card-description">Interactive Tableau visualizations for health analysists and customer service</div>
             </a>
         </div>
 
         <footer>
             <p>Built with marimo | Data from dbt + BigQuery 5-Layer Data Warehouse</p>
-            <p style="margin-top: 10px; font-size: 0.85em;">
-                Start both apps:<br>
-                <code style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px;">marimo run apps/data_marts_dashboard.py -p 4568 --no-token</code><br>
-                <code style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px;">marimo run apps/tableau_embed.py -p 4569 --no-token</code>
-            </p>
+            
+            <div style="margin-top: 1.5rem; color: #4b5563;">
+                <p style="margin-bottom: 0.5rem;">
+                    <a href="https://github.com/leon-vv7/dw-health-insurance-bipm" target="_blank" style="color: inherit; text-decoration: underline;">View Project Source Code</a>
+                </p>
+                <p style="font-size: 0.8rem; opacity: 0.6;">
+                    (Tableau credentials required for dashboard access)
+                </p>
+            </div>
         </footer>
     </div>
 </body>
