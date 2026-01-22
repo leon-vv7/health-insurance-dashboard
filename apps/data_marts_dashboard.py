@@ -145,7 +145,12 @@ def _(
     selected_table,
 ):
     # Dynamic visualizations based on selected data mart
+    # Always initialize as empty to ensure clean state
     customer_360_charts = []
+    
+    # Force garbage collection of previous charts
+    import gc
+    gc.collect()
 
     if selected_table == "dm_customer_360":
             # 1. Calculate Global Averages (Used for Reference Lines)
@@ -820,24 +825,41 @@ def _(
 
 
 @app.cell
-def _(customer_360_charts, mo):
+def _(customer_360_charts, mo, selected_table):
     # Display all charts for the selected data mart
-    if customer_360_charts:
-        # Ensure each chart has explicit height set and is properly isolated
-        for chart in customer_360_charts:
-            # Set height if not already set
-            if chart.layout.height is None:
-                chart.update_layout(height=500)
-        
-        chart_displays = [mo.ui.plotly(chart) for chart in customer_360_charts]
-        # Use vstack with explicit spacing to prevent squishing
-        charts_display = mo.vstack(
-            chart_displays,
-            gap="2rem"  # Add spacing between charts
-        )
+    # Adding selected_table as dependency ensures this re-renders on data mart changes
+    if not customer_360_charts:
+        mo.md("*Select a data mart to view visualizations*")
     else:
-        charts_display = mo.md("*Select a data mart to view visualizations*")
-    charts_display
+        # Create a fresh list of displayed charts
+        # This ensures proper isolation and prevents state carryover
+        displayed_items = []
+        
+        for idx, chart in enumerate(customer_360_charts):
+            try:
+                # Create a fresh figure copy to avoid shared state issues
+                import copy
+                chart_copy = copy.deepcopy(chart)
+                
+                # Apply consistent styling to each chart
+                chart_copy.update_layout(
+                    height=550,
+                    autosize=True,
+                    margin=dict(l=50, r=50, t=80, b=50),
+                    font=dict(size=12),
+                    paper_bgcolor='rgba(250,250,250,1)',
+                    plot_bgcolor='rgba(255,255,255,1)'
+                )
+                # Ensure axes are responsive
+                chart_copy.update_xaxes(automargin=True, showgrid=True, gridwidth=1, gridcolor='rgba(200,200,200,0.3)')
+                chart_copy.update_yaxes(automargin=True, showgrid=True, gridwidth=1, gridcolor='rgba(200,200,200,0.3)')
+                
+                displayed_items.append(mo.ui.plotly(chart_copy))
+            except Exception as e:
+                displayed_items.append(mo.md(f"Error rendering chart {idx+1}: {str(e)}"))
+        
+        # Stack with generous spacing to prevent overlap
+        mo.vstack(displayed_items, gap="4rem")
     return
 
 
