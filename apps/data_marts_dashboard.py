@@ -285,7 +285,12 @@ def _(
                     legend=dict(orientation="h", y=-0.2)
                 )
 
-                customer_360_charts = [fig_stats, fig_lifestyle, fig_hr, fig_claims, fig_visits, fig_fin]
+                fig1 = fig_stats
+                fig2 = fig_lifestyle
+                fig3 = fig_hr
+                fig4 = fig_claims
+                fig5 = fig_visits
+                fig6 = fig_fin
         
     elif selected_table == "dm_health_by_demographics":
         # Health by Demographics visualizations
