@@ -10,7 +10,10 @@
 import marimo
 
 __generated_with = "0.19.4"
-app = marimo.App(width="medium")
+app = marimo.App(
+    width="medium",
+    layout_file="layouts/data_marts_dashboard.grid.json",
+)
 
 
 @app.cell
@@ -145,12 +148,13 @@ def _(
     selected_table,
 ):
     # Dynamic visualizations based on selected data mart
-    # Always initialize as empty to ensure clean state
-    customer_360_charts = []
-    
-    # Force garbage collection of previous charts
-    import gc
-    gc.collect()
+    # Initialize all figures
+    fig1 = None
+    fig2 = None
+    fig3 = None
+    fig4 = None
+    fig5 = None
+    fig6 = None
 
     if selected_table == "dm_customer_360":
             # 1. Calculate Global Averages (Used for Reference Lines)
@@ -303,7 +307,6 @@ def _(
             category_orders={'age_group': age_order}, color_discrete_sequence=px.colors.qualitative.Bold
         )
         fig1.update_traces(textposition='top center', text=scatter_data[cost_col].round(2))
-        fig1.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
 
         # FIG 2: Heatmap
         fig2 = px.density_heatmap(
@@ -312,7 +315,6 @@ def _(
             labels={'age_group': 'Age Group', 'family_status': 'Family Status', 'pct_with_sleep_disorder': '% With Disorder'},
             category_orders={'age_group': age_order}, color_continuous_scale='Teal' 
         )
-        fig2.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
 
         # FIG 3: Bar (Heart Rate)
         hr_by_demo = df.groupby(['age_group', 'gender'], observed=True)['avg_heart_rate_bpm'].mean().reset_index()
@@ -324,7 +326,6 @@ def _(
             color_discrete_map={'female': '#e15759', 'male': '#4e79a7', 'other': '#bab0ac'}
         )
         fig3.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
-        customer_360_charts = [fig1, fig2, fig3]
 
     elif selected_table == "dm_insurance_profitability":
         # Insurance Profitability visualizations
@@ -515,23 +516,17 @@ def _(
             middle_row_fig = go.Figure().add_annotation(text=f"Error Loading Data: {e}")
             bottom_row_fig = go.Figure().add_annotation(text=f"Error Loading Data: {e}")
 
-        customer_360_charts = [top_row_fig, middle_row_fig, bottom_row_fig]
+        # Assign to fig1, fig2, fig3 for consistency
+        fig1 = top_row_fig
+        fig2 = middle_row_fig
+        fig3 = bottom_row_fig
 
     elif selected_table == "dm_sleep_health_analysis":
         # Sleep Health visualizations
         fig1 = px.box(df, x='sleep_disorder', y=['avg_sleep_hours', 'avg_sleep_quality_score'], title='Sleep Metrics by Disorder Type', points='all')
-        fig1.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
-        
         fig2 = px.scatter(df, x='avg_daily_steps', y='avg_sleep_quality_score', color='activity_level', size='unique_persons', title='Daily Steps vs Sleep Quality')
-        fig2.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
-        
         fig3 = px.bar(df.groupby('stress_level').agg({'avg_sleep_hours': 'mean', 'pct_sleep_deprived': 'mean'}).reset_index(), x='stress_level', y=['avg_sleep_hours', 'pct_sleep_deprived'], title='Sleep Metrics by Stress Level', barmode='group')
-        fig3.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
-        
         fig4 = px.scatter(df, x='avg_heart_rate_bpm', y='avg_blood_oxygen_pct', color='sleep_disorder', size='unique_persons', title='Heart Rate vs Blood Oxygen')
-        fig4.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
-        
-        customer_360_charts = [fig1, fig2, fig3, fig4]
 
     elif selected_table == "dm_data_quality_dashboard":
         # Data Quality Dashboard visualizations
@@ -563,14 +558,14 @@ def _(
         total_errors = sum(error_counts.values())
 
         # Subplots created
-        kpi_fig = make_subplots(
+        fig1 = make_subplots(
             rows=1, cols=3,
             specs=[[{'type': 'domain'}, {'type': 'domain'}, {'type': 'domain'}]],
             subplot_titles=("Overall Quality Score", "Data Completeness", "Quality Issues Distribution")
         )
 
         # COLUMN 1: Overall Quality Gauge
-        kpi_fig.add_trace(go.Indicator(
+        fig1.add_trace(go.Indicator(
             mode="gauge+number+delta",
             value=overall_row['overall_quality_score'],
             delta={'reference': 99.0, 'position': "top", 'suffix': "%"},
@@ -586,7 +581,7 @@ def _(
         ), row=1, col=1)
 
         # COLUMN 2: Data Completeness Gauge
-        kpi_fig.add_trace(go.Indicator(
+        fig1.add_trace(go.Indicator(
             mode="gauge+number",
             value=completeness_score,
             gauge={
@@ -597,7 +592,7 @@ def _(
         ), row=1, col=2)
 
         # COLUMN 3: Error Composition Donut
-        kpi_fig.add_trace(go.Pie(
+        fig1.add_trace(go.Pie(
             values=list(error_counts.values()),
             labels=list(error_counts.keys()),
             hole=0.6,
@@ -605,14 +600,14 @@ def _(
         ), row=1, col=3)
 
         # Add total error count in the center of the donut
-        kpi_fig.add_annotation(
+        fig1.add_annotation(
             text=f"{int(total_errors):,}", 
             x=0.88, y=0.5, # Approximate center of 3rd plot
             font_size=20, showarrow=False, xref="paper", yref="paper"
         )
     
         # Clean up layout
-        kpi_fig.update_layout(height=350, margin=dict(l=20, r=20, t=50, b=20))
+        fig1.update_layout(height=350, margin=dict(l=20, r=20, t=50, b=20))
 
         scorecard_df = df[
             (df['data_source'] == 'By Occupation') | 
@@ -814,54 +809,48 @@ def _(
         except Exception as e:
             print(f"Could not generate Anomaly Chart: {e}")
     
-        # Update the list
-        customer_360_charts = [kpi_fig, fig4, fig5]
-        if fig6:
-            customer_360_charts.append(fig6)
+        # For Data Quality Dashboard, we have kpi_fig, fig4, fig5, and optionally fig6
+        if selected_table == "dm_data_quality_dashboard":
+            # Already assigned above
+            pass
 
-    else:
-        customer_360_charts = []
-    return (customer_360_charts,)
+    # Return all figures (some may be None if not in this data mart)
+    return fig1, fig2, fig3, fig4, fig5, fig6
 
 
 @app.cell
-def _(customer_360_charts, mo, selected_table):
-    # Display all charts for the selected data mart
-    # Adding selected_table as dependency ensures this re-renders on data mart changes
-    if not customer_360_charts:
-        result = mo.md("*Select a data mart to view visualizations*")
-    else:
-        # Create a fresh list of displayed charts
-        # This ensures proper isolation and prevents state carryover
-        displayed_items = []
-        
-        for idx, chart in enumerate(customer_360_charts):
-            try:
-                # Create a fresh figure copy to avoid shared state issues
-                import copy
-                chart_copy = copy.deepcopy(chart)
-                
-                # Apply consistent styling to each chart
-                chart_copy.update_layout(
-                    height=550,
-                    autosize=True,
-                    margin=dict(l=50, r=50, t=80, b=50),
-                    font=dict(size=12),
-                    paper_bgcolor='rgba(250,250,250,1)',
-                    plot_bgcolor='rgba(255,255,255,1)'
-                )
-                # Ensure axes are responsive
-                chart_copy.update_xaxes(automargin=True, showgrid=True, gridwidth=1, gridcolor='rgba(200,200,200,0.3)')
-                chart_copy.update_yaxes(automargin=True, showgrid=True, gridwidth=1, gridcolor='rgba(200,200,200,0.3)')
-                
-                displayed_items.append(mo.ui.plotly(chart_copy))
-            except Exception as e:
-                displayed_items.append(mo.md(f"Error rendering chart {idx+1}: {str(e)}"))
-        
-        # Stack with generous spacing to prevent overlap
-        result = mo.vstack(displayed_items, gap="4rem")
-    
-    result
+def _(fig1):
+    fig1
+    return
+
+
+@app.cell
+def _(fig2):
+    fig2
+    return
+
+
+@app.cell
+def _(fig3):
+    fig3
+    return
+
+
+@app.cell
+def _(fig4):
+    fig4
+    return
+
+
+@app.cell
+def _(fig5):
+    fig5
+    return
+
+
+@app.cell
+def _(fig6):
+    fig6
     return
 
 
