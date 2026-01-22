@@ -118,26 +118,16 @@ def _(df, mo, selected_table):
     # Only populate this if we are looking at the Customer 360 mart
 
     customer_selector = mo.ui.dropdown(
-
         options=sorted(df['PersonID'].unique().tolist()) if 'PersonID' in df.columns else [],
-
         label="🔍 Drill Down: Select a Customer ID (Clear to view All)",
-
         value=None # Default to None (show the aggregate view first)
-
     )
 
-
     # Only display the dropdown if we are in the right data mart
-
     display_selector = mo.vstack([
-
         mo.md("### 👤 Single Customer Lookup"), 
-
         customer_selector
-
     ]) if selected_table == "dm_customer_360" and 'PersonID' in df.columns else mo.md("")
-
 
     display_selector
     return (customer_selector,)
@@ -145,12 +135,11 @@ def _(df, mo, selected_table):
 
 @app.cell
 def _(
+    base_url,
     customer_selector,
-    data_dir,
     df,
     go,
     make_subplots,
-    os,
     pd,
     px,
     selected_table,
@@ -176,7 +165,6 @@ def _(
                 if cust_rows.empty:
                     customer_360_charts = [go.Figure().add_annotation(text="Customer ID Not Found")]
                 else:
-                    # FIX: Convert to dictionary immediately to avoid Pandas "Ambiguous Truth" error
                     cust_data = cust_rows.iloc[0].to_dict()
                     view_title = f"Customer Profile: {pid}"
             else:
@@ -239,7 +227,7 @@ def _(
                 fig_lifestyle.update_xaxes(range=[0, 12], row=1, col=1) 
                 fig_lifestyle.update_xaxes(range=[0, 15000], row=1, col=2) 
 
-                # --- FIG 3-5: COMPARISON CHARTS (Teal Dot vs Red Line) ---
+                # --- FIG 3-5: COMPARISON CHARTS ---
                 def create_comparison_chart(val, avg, title, max_range):
                     fig = go.Figure()
                     # The Dot (Customer/Average)
@@ -329,20 +317,22 @@ def _(
             color_discrete_map={'female': '#e15759', 'male': '#4e79a7', 'other': '#bab0ac'}
         )
         customer_360_charts = [fig1, fig2, fig3]
+
     elif selected_table == "dm_insurance_profitability":
         # Insurance Profitability visualizations
     
         # Initialize variables
         top_row_fig = go.Figure()
         middle_row_fig = go.Figure()
-        # fig_final = go.Figure() # Placeholder for your new specific visual
+        bottom_row_fig = go.Figure()
 
         # ---------------------------------------------------------
         # DATA LOADING & PREP
         # ---------------------------------------------------------
         try:
-            # Load raw data
-            ts_raw_df = pd.read_csv('data/dm_customer_360.csv')
+            # FIX: Load raw data using base_url instead of local path
+            cust_url = f"{base_url}/dm_customer_360.csv"
+            ts_raw_df = pd.read_csv(cust_url)
         
             # 1. RENAME OCCUPATIONS
             ts_raw_df['occupational_category'] = ts_raw_df['occupational_category'].replace({
@@ -458,7 +448,6 @@ def _(
             # ---------------------------------------------------------
             # BOTTOM ROW: Sankey Diagram (Occupation -> Health -> Status)
             # ---------------------------------------------------------
-            # 1. Aggregate data for the flows
             # Flow 1: Occupation -> Health Status
             flow1 = ts_raw_df.groupby(['occupational_category', 'health_status']).size().reset_index(name='count')
             flow1.columns = ['Source', 'Target', 'Value']
@@ -467,21 +456,19 @@ def _(
             flow2 = ts_raw_df.groupby(['health_status', 'insurance_status']).size().reset_index(name='count')
             flow2.columns = ['Source', 'Target', 'Value']
 
-            # 2. Create unique labels for nodes
+            # Create unique labels for nodes
             all_nodes = list(pd.concat([flow1['Source'], flow1['Target'], flow2['Target']]).unique())
             node_map = {name: i for i, name in enumerate(all_nodes)}
 
-            # 3. Map names to indices
+            # Map names to indices
             links = []
-            # Add Link 1
             for _, row in flow1.iterrows():
                 links.append({
                     'source': node_map[row['Source']],
                     'target': node_map[row['Target']],
                     'value': row['Value'],
-                    'color': 'rgba(211, 211, 211, 0.5)' # Light gray links
+                    'color': 'rgba(211, 211, 211, 0.5)'
                 })
-            # Add Link 2
             for _, row in flow2.iterrows():
                 links.append({
                     'source': node_map[row['Source']],
@@ -492,14 +479,14 @@ def _(
 
             link_df = pd.DataFrame(links)
 
-            # 4. Create Sankey
+            # Create Sankey
             bottom_row_fig = go.Figure(data=[go.Sankey(
                 node = dict(
                     pad = 15,
                     thickness = 20,
                     line = dict(color = "black", width = 0.5),
                     label = all_nodes,
-                    color = "#4e79a7" # Blue nodes
+                    color = "#4e79a7"
                 ),
                 link = dict(
                     source = link_df['source'],
@@ -516,204 +503,9 @@ def _(
             )
 
         except Exception as e:
-            print(f"Could not load data: {e}")
-            top_row_fig = go.Figure().update_layout(title="Error Loading Data")
-            middle_row_fig = go.Figure().update_layout(title="Error Loading Data")
-            bottom_row_fig = go.Figure().update_layout(title="Error Loading Data")
-
-        customer_360_charts = [top_row_fig, middle_row_fig, bottom_row_fig]
-
-    elif selected_table == "dm_insurance_profitability":
-        # Insurance Profitability visualizations
-    
-        # Initialize variables
-        top_row_fig = go.Figure()
-        middle_row_fig = go.Figure()
-        # fig_final = go.Figure() # Placeholder for your new specific visual
-
-        # ---------------------------------------------------------
-        # DATA LOADING & PREP
-        # ---------------------------------------------------------
-        try:
-            # Load raw data
-            ts_raw_df = pd.read_csv(os.path.join(data_dir, 'dm_customer_360.csv'))
-        
-            # 1. RENAME OCCUPATIONS
-            ts_raw_df['occupational_category'] = ts_raw_df['occupational_category'].replace({
-                "it specialist": "IT-Specialist", "healthcare_worker": "Healthcare Worker",
-                "office_worker": "Office Worker", "retail_worker": "Retail Worker",
-                "self-employed": "Self-Employed", "student": "Student",
-                "engineer": "Engineer", "nurse": "Nurse",
-                "teacher": "Teacher", "unemployed": "Unemployed"
-            })
-
-            # 2. Date Conversion
-            date_col = 'insurance_sign_up_date'
-            if date_col not in ts_raw_df.columns:
-                date_col = 'created_at'  
-            ts_raw_df['temp_date'] = pd.to_datetime(ts_raw_df[date_col], errors='coerce')
-
-            # ---------------------------------------------------------
-            # TOP ROW: Time Series
-            # ---------------------------------------------------------
-            trend_df = ts_raw_df.groupby(ts_raw_df['temp_date'].dt.to_period("M").dt.to_timestamp())[[
-                'lifetime_premiums_paid', 'lifetime_claims_amount'
-            ]].sum().reset_index()
-            trend_df.rename(columns={'temp_date': 'Date'}, inplace=True)
-            trend_df['Loss Ratio %'] = (trend_df['lifetime_claims_amount'] / trend_df['lifetime_premiums_paid'].replace(0, 1)) * 100
-
-            top_row_fig = make_subplots(
-                rows=1, cols=2,
-                subplot_titles=("Financial Performance: Premiums vs Claims", "Loss Ratio KPI (Trend)"),
-                horizontal_spacing=0.15
-            )
-
-            # LEFT: Financials
-            top_row_fig.add_trace(go.Scatter(x=trend_df['Date'], y=trend_df['lifetime_premiums_paid'], mode='lines', name='Premiums', stackgroup='one', line=dict(color='#d4b9da')), row=1, col=1)
-            top_row_fig.add_trace(go.Scatter(x=trend_df['Date'], y=trend_df['lifetime_claims_amount'], mode='lines', name='Claims', stackgroup='one', line=dict(color='#4e79a7')), row=1, col=1)
-
-            # RIGHT: Loss Ratio
-            top_row_fig.add_trace(go.Scatter(x=trend_df['Date'], y=trend_df['Loss Ratio %'], mode='lines', name='Loss Ratio %', line=dict(color='#4e79a7', width=3)), row=1, col=2)
-            top_row_fig.add_hline(y=60, line_dash="solid", line_color="gray", annotation_text="Limit (60%)", row=1, col=2)
-        
-            if not trend_df.empty:
-                last_val = trend_df.iloc[-1]
-                top_row_fig.add_annotation(
-                    x=last_val['Date'], y=last_val['Loss Ratio %'],
-                    text=f"{last_val['Loss Ratio %']:.1f}%",
-                    showarrow=True, arrowhead=2, yshift=10, row=1, col=2
-                )
-
-            top_row_fig.update_layout(height=450, showlegend=True, margin=dict(l=50, r=20, t=60, b=20))
-            top_row_fig.update_yaxes(title_text="Amount ($)", row=1, col=1)
-            top_row_fig.update_yaxes(title_text="Loss Ratio (%)", row=1, col=2)
-
-            # ---------------------------------------------------------
-            # MIDDLE ROW: Deviation & Heatmap
-            # ---------------------------------------------------------
-        
-            # Heatmap Prep
-            def get_hr_category(bpm):
-                if pd.isna(bpm): return "Unknown"
-                if bpm > 100: return 'High'
-                elif bpm < 60: return 'Low'
-                else: return 'Normal'
-
-            ts_raw_df['Heart Rate Category'] = ts_raw_df['current_heart_rate_bpm'].apply(get_hr_category)
-            cost_matrix = ts_raw_df.groupby(['occupational_category', 'Heart Rate Category']).agg({
-                'lifetime_premiums_paid': 'sum', 'lifetime_claims_amount': 'sum'
-            }).reset_index()
-            cost_matrix['Loss Ratio'] = cost_matrix['lifetime_claims_amount'] / cost_matrix['lifetime_premiums_paid']
-            heatmap_data = cost_matrix.pivot(index='occupational_category', columns='Heart Rate Category', values='Loss Ratio')
-
-            # Deviation Prep
-            total_claims_global = ts_raw_df['lifetime_claims_amount'].sum()
-            total_premiums_global = ts_raw_df['lifetime_premiums_paid'].sum()
-            portfolio_avg = total_claims_global / total_premiums_global
-
-            dev_df = ts_raw_df.groupby('occupational_category').agg({
-                'lifetime_claims_amount': 'sum', 'lifetime_premiums_paid': 'sum'
-            }).reset_index()
-            dev_df['Segment Loss Ratio'] = dev_df['lifetime_claims_amount'] / dev_df['lifetime_premiums_paid']
-            dev_df['Deviation'] = dev_df['Segment Loss Ratio'] - portfolio_avg
-            dev_df = dev_df.sort_values('Deviation', ascending=True)
-        
-            # Reorder Heatmap
-            sorted_occupations = dev_df['occupational_category'].tolist()
-            heatmap_data = heatmap_data.reindex(sorted_occupations)
-
-            middle_row_fig = make_subplots(
-                rows=1, cols=2,
-                subplot_titles=("Segment Deviation from Portfolio Average", "Cost Drivers by Health Profile"),
-                column_widths=[0.6, 0.4], horizontal_spacing=0.15
-            )
-
-            colors = ['#e15759' if x > 0 else '#4e79a7' for x in dev_df['Deviation']]
-        
-            # Bar Chart
-            middle_row_fig.add_trace(go.Bar(
-                x=dev_df['Deviation'], y=dev_df['occupational_category'], orientation='h',
-                marker_color=colors, text=dev_df['Deviation'], texttemplate="%{x:+.1%}", textposition='outside'
-            ), row=1, col=1)
-
-            # Heatmap
-            middle_row_fig.add_trace(go.Heatmap(
-                z=heatmap_data.values, x=heatmap_data.columns, y=heatmap_data.index, 
-                colorscale='RdBu_r', text=heatmap_data.values, texttemplate="%{z:.1%}",
-                colorbar=dict(title="Loss Ratio", x=1.05, thickness=10)
-            ), row=1, col=2)
-
-            middle_row_fig.update_layout(height=500, showlegend=False, margin=dict(l=180, r=50, t=50, b=50))
-            middle_row_fig.update_yaxes(categoryorder='trace', row=1, col=1)
-            middle_row_fig.update_yaxes(categoryorder='trace', row=1, col=2)
-            middle_row_fig.update_xaxes(title_text="Deviation", row=1, col=1)
-            middle_row_fig.update_xaxes(title_text="Risk Category", row=1, col=2)
-
-            # ---------------------------------------------------------
-            # BOTTOM ROW: Sankey Diagram (Occupation -> Health -> Status)
-            # ---------------------------------------------------------
-            # 1. Aggregate data for the flows
-            # Flow 1: Occupation -> Health Status
-            flow1 = ts_raw_df.groupby(['occupational_category', 'health_status']).size().reset_index(name='count')
-            flow1.columns = ['Source', 'Target', 'Value']
-        
-            # Flow 2: Health Status -> Insurance Status
-            flow2 = ts_raw_df.groupby(['health_status', 'insurance_status']).size().reset_index(name='count')
-            flow2.columns = ['Source', 'Target', 'Value']
-
-            # 2. Create unique labels for nodes
-            all_nodes = list(pd.concat([flow1['Source'], flow1['Target'], flow2['Target']]).unique())
-            node_map = {name: i for i, name in enumerate(all_nodes)}
-
-            # 3. Map names to indices
-            links = []
-            # Add Link 1
-            for _, row in flow1.iterrows():
-                links.append({
-                    'source': node_map[row['Source']],
-                    'target': node_map[row['Target']],
-                    'value': row['Value'],
-                    'color': 'rgba(211, 211, 211, 0.5)' # Light gray links
-                })
-            # Add Link 2
-            for _, row in flow2.iterrows():
-                links.append({
-                    'source': node_map[row['Source']],
-                    'target': node_map[row['Target']],
-                    'value': row['Value'],
-                    'color': 'rgba(211, 211, 211, 0.5)'
-                })
-
-            link_df = pd.DataFrame(links)
-
-            # 4. Create Sankey
-            bottom_row_fig = go.Figure(data=[go.Sankey(
-                node = dict(
-                    pad = 15,
-                    thickness = 20,
-                    line = dict(color = "black", width = 0.5),
-                    label = all_nodes,
-                    color = "#4e79a7" # Blue nodes
-                ),
-                link = dict(
-                    source = link_df['source'],
-                    target = link_df['target'],
-                    value = link_df['value'],
-                    color = link_df['color']
-                )
-            )])
-
-            bottom_row_fig.update_layout(
-                title_text="Customer Journey: Occupation → Health Profile → Policy Status",
-                height=500,
-                font_size=12
-            )
-
-        except Exception as e:
-            print(f"Could not load data: {e}")
-            top_row_fig = go.Figure().update_layout(title="Error Loading Data")
-            middle_row_fig = go.Figure().update_layout(title="Error Loading Data")
-            bottom_row_fig = go.Figure().update_layout(title="Error Loading Data")
+            top_row_fig = go.Figure().add_annotation(text=f"Error Loading Data: {e}")
+            middle_row_fig = go.Figure().add_annotation(text=f"Error Loading Data: {e}")
+            bottom_row_fig = go.Figure().add_annotation(text=f"Error Loading Data: {e}")
 
         customer_360_charts = [top_row_fig, middle_row_fig, bottom_row_fig]
 
@@ -937,8 +729,9 @@ def _(
         fig6 = None 
 
         try:
-            # 1. Load data
-            raw_df = pd.read_csv('data/dm_customer_360.csv')
+            # FIX: Load raw data using base_url instead of local path
+            cust_url = f"{base_url}/dm_customer_360.csv"
+            raw_df = pd.read_csv(cust_url)
         
             # 2. Clean data
             activity_mapper = {
@@ -954,9 +747,9 @@ def _(
                 steps = row.get('current_daily_steps', 0)
 
                 if level == 3 and steps < 4000:
-                    return "Over-Reporter"       # Matches your screenshot
+                    return "Over-Reporter"
                 elif level == 1 and steps > 8000:
-                    return "Under-Reporter"      # Matches your screenshot
+                    return "Under-Reporter"
                 elif level == 3 and steps >= 8000:
                     return "Verified Active"
                 elif level == 1 and steps <= 4000:
@@ -965,8 +758,6 @@ def _(
                     return "Normal Range"
 
             raw_df['Anomaly Status'] = raw_df.apply(classify_anomaly, axis=1)
-
-
 
             # 4. Define the Exact Order
             custom_order = [
