@@ -298,6 +298,7 @@ def _(
             category_orders={'age_group': age_order}, color_discrete_sequence=px.colors.qualitative.Bold
         )
         fig1.update_traces(textposition='top center', text=scatter_data[cost_col].round(2))
+        fig1.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
 
         # FIG 2: Heatmap
         fig2 = px.density_heatmap(
@@ -306,6 +307,7 @@ def _(
             labels={'age_group': 'Age Group', 'family_status': 'Family Status', 'pct_with_sleep_disorder': '% With Disorder'},
             category_orders={'age_group': age_order}, color_continuous_scale='Teal' 
         )
+        fig2.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
 
         # FIG 3: Bar (Heart Rate)
         hr_by_demo = df.groupby(['age_group', 'gender'], observed=True)['avg_heart_rate_bpm'].mean().reset_index()
@@ -316,6 +318,7 @@ def _(
             category_orders={'age_group': age_order},
             color_discrete_map={'female': '#e15759', 'male': '#4e79a7', 'other': '#bab0ac'}
         )
+        fig3.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
         customer_360_charts = [fig1, fig2, fig3]
 
     elif selected_table == "dm_insurance_profitability":
@@ -512,9 +515,17 @@ def _(
     elif selected_table == "dm_sleep_health_analysis":
         # Sleep Health visualizations
         fig1 = px.box(df, x='sleep_disorder', y=['avg_sleep_hours', 'avg_sleep_quality_score'], title='Sleep Metrics by Disorder Type', points='all')
+        fig1.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
+        
         fig2 = px.scatter(df, x='avg_daily_steps', y='avg_sleep_quality_score', color='activity_level', size='unique_persons', title='Daily Steps vs Sleep Quality')
+        fig2.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
+        
         fig3 = px.bar(df.groupby('stress_level').agg({'avg_sleep_hours': 'mean', 'pct_sleep_deprived': 'mean'}).reset_index(), x='stress_level', y=['avg_sleep_hours', 'pct_sleep_deprived'], title='Sleep Metrics by Stress Level', barmode='group')
+        fig3.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
+        
         fig4 = px.scatter(df, x='avg_heart_rate_bpm', y='avg_blood_oxygen_pct', color='sleep_disorder', size='unique_persons', title='Heart Rate vs Blood Oxygen')
+        fig4.update_layout(height=500, margin=dict(l=50, r=50, t=60, b=50))
+        
         customer_360_charts = [fig1, fig2, fig3, fig4]
 
     elif selected_table == "dm_data_quality_dashboard":
@@ -812,27 +823,21 @@ def _(
 def _(customer_360_charts, mo):
     # Display all charts for the selected data mart
     if customer_360_charts:
+        # Ensure each chart has explicit height set and is properly isolated
+        for chart in customer_360_charts:
+            # Set height if not already set
+            if chart.layout.height is None:
+                chart.update_layout(height=500)
+        
         chart_displays = [mo.ui.plotly(chart) for chart in customer_360_charts]
-        charts_display = mo.vstack(chart_displays)
+        # Use vstack with explicit spacing to prevent squishing
+        charts_display = mo.vstack(
+            chart_displays,
+            gap="2rem"  # Add spacing between charts
+        )
     else:
         charts_display = mo.md("*Select a data mart to view visualizations*")
     charts_display
-    return
-
-
-@app.cell
-def _(customer_360_charts, mo):
-    # Individual chart display for debugging
-    if len(customer_360_charts) >= 2:
-        mo.md("### Individual Chart Display - Chart 2")
-    return
-
-
-@app.cell
-def _(customer_360_charts, mo):
-    # Show the second chart explicitly
-    if len(customer_360_charts) >= 2:
-        mo.ui.plotly(customer_360_charts[1])
     return
 
 
